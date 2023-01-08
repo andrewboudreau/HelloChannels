@@ -45,6 +45,7 @@ static ChannelReader<T> Merge<T>(CancellationToken cancellationToken, params Cha
     return output;
 }
 
+// Split
 static IReadOnlyList<ChannelReader<T>> Split<T>(ChannelReader<T> channel, int n)
 {
     var outputs = new Channel<T>[n];

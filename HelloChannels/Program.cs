@@ -1,16 +1,17 @@
-﻿using System.Threading.Channels;
-
+﻿
 Console.WriteLine("Hello, Channels");
-
-var cancellationSource = new CancellationTokenSource(TimeSpan.FromSeconds(1));
-var cancellationToken = cancellationSource.Token;
-
-var channel = Channel.CreateUnbounded<Message>();
-_ = Boring("+boring", channel.Writer);
+var cts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
 
 try
 {
-    await foreach (var message in channel.Reader.ReadAllAsync(cancellationToken))
+    var joe = BoringGenerator("Joe");
+    var ann = BoringGenerator("Ann");
+    
+    await foreach (var message in joe.ReadAllAsync(cts.Token))
+    {
+        Console.WriteLine($"You say: {message}");
+    }
+    await foreach (var message in ann.ReadAllAsync(cts.Token))
     {
         Console.WriteLine($"You say: {message}");
     }
@@ -21,18 +22,28 @@ catch (OperationCanceledException)
     Console.WriteLine("Time's Up; I'm leaving.");
 }
 
-async Task Boring(string msg, ChannelWriter<Message> channel)
+
+// Generator
+static ChannelReader<Message> BoringGenerator(string msg)
 {
-    for (var i = 0; i < 10; i++)
+    static async Task boring(string msg, ChannelWriter<Message> channel)
     {
-        await channel.WriteAsync(new Message(msg, i));
-        await Task.Delay(TimeSpan.FromMilliseconds(Random.Shared.Next(100)));
+        for (var i = 0; i < 10; i++)
+        {
+            await channel.WriteAsync(new Message(msg, i));
+            await Task.Delay(TimeSpan.FromMilliseconds(Random.Shared.Next(100)));
+        }
+
+        if (Random.Shared.Next(2) == 0)
+        {
+            channel.Complete();
+        }
     }
 
-    if (Random.Shared.Next(2) == 0)
-    {
-        channel.Complete();
-    }
+    var channel = Channel.CreateUnbounded<Message>();
+    _ = boring(msg, channel.Writer);
+    return channel;
 }
 
+// Payload
 record Message(string Key, int Value);
